@@ -6,28 +6,28 @@ use App\Http\Middleware\EnsureAuthenticated;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('dashboard');
 });
+
+// home
+Route::get('/home', function () {
+    return view('home');
+})->name('home');
+
+// guest routes
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register.show');
     Route::post('/register', [RegisterController::class, 'register'])->name('register');
+
+    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login.show');
+    Route::post('/login', [LoginController::class, 'login'])->name('login');
 });
 
 Route::middleware(EnsureAuthenticated::class)->group(function () {
     Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
+
+    Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
 
-Route::middleware('guest')->group(function () {
-    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login.show');
-    Route::post('/login', [LoginController::class, 'login'])->name('login');
-});
-
-Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth.session');
-
-Route::middleware('auth.session')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
-});
