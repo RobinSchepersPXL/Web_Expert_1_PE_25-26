@@ -30,4 +30,8 @@ class Event extends Model
     {
         return $this->hasMany(EventImage::class)->orderBy('order');
     }
+    public function tickets(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Ticket::class)->orderBy('categorie');
+    }
 }
