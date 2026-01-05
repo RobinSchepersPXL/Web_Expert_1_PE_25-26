@@ -4,6 +4,9 @@ use App\Http\Controllers\LoginController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Middleware\EnsureAuthenticated;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\PasswordResetRequestController;
+use App\Http\Controllers\Auth\PasswordUpdateController;
+
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -30,4 +33,8 @@ Route::middleware(EnsureAuthenticated::class)->group(function () {
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
+Route::get('password/reset', [PasswordResetRequestController::class, 'showRequestForm'])->name('password.request');
+Route::post('password/email', [PasswordResetRequestController::class, 'store'])->name('password.email');
 
+Route::get('password/reset/{token}', [PasswordUpdateController::class, 'showResetForm'])->name('password.reset.form');
+Route::post('password/reset', [PasswordUpdateController::class, 'update'])->name('password.update');

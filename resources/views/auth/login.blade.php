@@ -1,41 +1,31 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Login</title>
-</head>
-<body>
-  <h1>Login</h1>
+@extends('layouts.app')
 
-@if($errors->any())
-    <div style="color:red">
-        <ul>
-            @foreach($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
+@section('content')
+    <div class="max-w-md mx-auto p-6">
+        <form method="POST" action="{{ route('login') }}">
+            @csrf
+
+            <!-- e-mail -->
+            <div class="mb-4">
+                <label for="email" class="block text-sm font-medium">E-mail</label>
+                <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus class="mt-1 block w-full" />
+            </div>
+
+            <!-- wachtwoord -->
+            <div class="mb-4">
+                <label for="password" class="block text-sm font-medium">Wachtwoord</label>
+                <input id="password" type="password" name="password" required class="mt-1 block w-full" />
+            </div>
+
+            <div class="flex items-center justify-between mt-6">
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Inloggen</button>
+
+                @if (Route::has('password.request'))
+                    <a class="text-sm text-blue-600 hover:underline" href="{{ route('password.request') }}">
+                        Wachtwoord vergeten?
+                    </a>
+                @endif
+            </div>
+        </form>
     </div>
-@endif
-
-<form method="POST" action="{{ route('login') }}">
-    @csrf
-
-    <div>
-        <label for="email">Email</label>
-        <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus>
-    </div>
-
-    <div>
-        <label for="password">Password</label>
-        <input id="password" type="password" name="password" required>
-    </div>
-
-    <div>
-        <button type="submit">Login</button>
-    </div>
-</form>
-
-<p><a href="{{ route('register.show') }}">Register</a></p>
-</body>
-</html>
-
+@endsection
