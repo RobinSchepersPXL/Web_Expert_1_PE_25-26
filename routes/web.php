@@ -33,8 +33,18 @@ Route::middleware(EnsureAuthenticated::class)->group(function () {
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
-Route::get('password/reset', [PasswordResetRequestController::class, 'showRequestForm'])->name('password.request');
+Route::get('/admin', function () {
+})->middleware(['auth.custom', 'admin']);
+
+
+Route::get('/admin-direct', function () {
+})->middleware(\App\Http\Middleware\EnsureAdmin::class);
+
+
+// Password reset request (show form) and submit (send email)
+Route::get('password/reset', [PasswordResetRequestController::class, 'showLinkRequestForm'])->name('password.request');
 Route::post('password/email', [PasswordResetRequestController::class, 'store'])->name('password.email');
 
-Route::get('password/reset/{token}', [PasswordUpdateController::class, 'showResetForm'])->name('password.reset.form');
+// Password reset form (clicked link) and update (submit new password)
+Route::get('password/reset/{token}', [PasswordUpdateController::class, 'showResetForm'])->name('password.reset');
 Route::post('password/reset', [PasswordUpdateController::class, 'update'])->name('password.update');

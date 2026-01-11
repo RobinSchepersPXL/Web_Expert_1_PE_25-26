@@ -1,24 +1,38 @@
 <?php
-// File: database/migrations/2026_01_05_112832_create_password_resets_table.php
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
-class CreatePasswordResetsTable extends Migration
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+
+class PasswordResetRequestController extends Controller
 {
-    public function up()
+    // show the request form (GET)
+    public function showLinkRequestForm()
     {
-        if (! Schema::hasTable('password_resets')) {
-            Schema::create('password_resets', function (Blueprint $table) {
-                $table->string('email')->index();
-                $table->string('token');
-                $table->timestamp('created_at')->nullable();
-            });
-        }
+        return view('auth.passwords.email');
     }
 
-    public function down()
+    // handle form submission (POST /password/email)
+    public function store(Request $request)
     {
-        Schema::dropIfExists('password_resets');
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        $email = $request->input('email');
+        $token = Str::random(64);
+
+
+        DB::table('password_resets')->updateOrInsert(
+            ['email' => $email],
+            ['token' => Hash::make($token), 'created_at' => now()]
+        );
+
+        return redirect('/password/reset/' . $token . '?email=' . urlencode($email))
+            ->with('status', 'Enter a new password for this account.');
     }
 }

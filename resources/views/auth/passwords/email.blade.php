@@ -1,4 +1,3 @@
-<!-- blade -->
 @extends('layouts.app')
 
 @section('title', 'Password reset')
@@ -23,6 +22,10 @@
             </div>
         @endif
 
+        <p class="mb-4 text-sm text-gray-700 dark:text-gray-300">
+            Enter the email of the account you want to change. No email will be sent — after submitting you will be redirected to set a new password immediately.
+        </p>
+
         <form method="POST" action="{{ url('/password/email') }}">
             @csrf
 
@@ -32,7 +35,7 @@
 
             <button type="submit"
                     class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded">
-                Send password reset link
+                Proceed to choose a new password
             </button>
         </form>
     </div>
