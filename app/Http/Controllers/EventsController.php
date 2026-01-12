@@ -11,10 +11,6 @@ use Illuminate\Support\Facades\Storage;
 
 class EventsController extends Controller
 {
-    /**
-     * Only authenticated users may access create/store/edit/update/destroy/toggleFavorite.
-     * Index and show remain public.
-     */
     public function __construct()
     {
         $this->middleware('auth')->only([
@@ -23,14 +19,31 @@ class EventsController extends Controller
     }
 
     /**
-     * Public overview.
-     * - Guests: latest() order
-     * - Logged-in users: favorites are shown on top (handled in view via favoriteIds)
+     * Events overview + SEARCH
+     * - filter on title, location, date
+     * - NO extra sorting (latest blijft standaard)
      */
-    public function index()
+    public function index(Request $request)
     {
-        $events = Event::query()->latest()->get();
+        $query = Event::query();
 
+        // 🔍 Search filters (basis)
+        if ($request->filled('q')) {
+            $query->where('title', 'like', '%' . $request->q . '%');
+        }
+
+        if ($request->filled('location')) {
+            $query->where('location', 'like', '%' . $request->location . '%');
+        }
+
+        if ($request->filled('date')) {
+            $query->whereDate('start_date', $request->date);
+        }
+
+        // Basis sortering
+        $events = $query->latest()->get();
+
+        // Favorieten voor ingelogde users
         $favoriteIds = [];
         if (Auth::check() && Schema::hasTable('favorites')) {
             $favoriteIds = DB::table('favorites')
@@ -42,15 +55,14 @@ class EventsController extends Controller
         return view('events.index', compact('events', 'favoriteIds'));
     }
 
-    /**
-     * Public detail page.
-     * Shows event + tickets (only if tickets table AND event_id column exist) + favorite status.
-     */
     public function show(Event $event)
     {
         $tickets = collect();
 
-        if (Schema::hasTable('tickets') && Schema::hasColumn('tickets', 'event_id')) {
+        if (
+            Schema::hasTable('tickets') &&
+            Schema::hasColumn('tickets', 'event_id')
+        ) {
             $tickets = DB::table('tickets')
                 ->where('event_id', $event->id)
                 ->orderBy('id')
@@ -68,19 +80,12 @@ class EventsController extends Controller
         return view('events.show', compact('event', 'tickets', 'isFavorite'));
     }
 
-    /**
-     * Only admins may create events (enforced by policy).
-     */
     public function create()
     {
         $this->authorize('create', Event::class);
-
         return view('events.create');
     }
 
-    /**
-     * Store event (admin-only via policy).
-     */
     public function store(Request $request)
     {
         $this->authorize('create', Event::class);
@@ -94,7 +99,7 @@ class EventsController extends Controller
             'capacity' => ['nullable', 'integer', 'min:1'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'images' => ['nullable', 'array', 'max:10'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
+            'images.*' => ['image', 'max:5120'],
         ]);
 
         $paths = [];
@@ -118,120 +123,54 @@ class EventsController extends Controller
 
         return redirect()
             ->route('events.show', $event)
-            ->with('status', 'Event successfully created!');
+            ->with('status', 'Event succesvol aangemaakt!');
     }
 
-    /**
-     * Only admin-owner may edit (policy update).
-     */
     public function edit(Event $event)
     {
         $this->authorize('update', $event);
-
         return view('events.edit', compact('event'));
     }
 
-    /**
-     * Update event (admin-owner via policy update).
-     * Supports deleting existing images and uploading new ones.
-     */
     public function update(Request $request, Event $event)
     {
         $this->authorize('update', $event);
 
         $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string'],
-            'location' => ['required', 'string', 'max:255'],
+            'title' => ['required'],
+            'description' => ['required'],
+            'location' => ['required'],
             'start_date' => ['required', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-            'capacity' => ['nullable', 'integer', 'min:1'],
-            'price' => ['nullable', 'numeric', 'min:0'],
-            'new_images' => ['nullable', 'array', 'max:10'],
-            'new_images.*' => ['image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
-            'delete_images' => ['nullable', 'array'],
-            'delete_images.*' => ['string'],
+            'end_date' => ['nullable', 'date'],
         ]);
 
-        $event->update([
-            'title' => $validated['title'],
-            'description' => $validated['description'],
-            'location' => $validated['location'],
-            'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'] ?? null,
-            'capacity' => $validated['capacity'] ?? null,
-            'price' => $validated['price'] ?? null,
-        ]);
-
-        $currentImages = $event->images ?? [];
-
-        // Delete selected images
-        if (!empty($validated['delete_images'])) {
-            foreach ($validated['delete_images'] as $imagePath) {
-                if (in_array($imagePath, $currentImages)) {
-                    Storage::disk('public')->delete($imagePath);
-                    $currentImages = array_values(array_diff($currentImages, [$imagePath]));
-                }
-            }
-        }
-
-        // Upload new images
-        if ($request->hasFile('new_images')) {
-            foreach ($request->file('new_images') as $file) {
-                $currentImages[] = $file->store('events', 'public');
-            }
-        }
-
-        $event->images = $currentImages;
-        $event->save();
+        $event->update($validated);
 
         return redirect()
             ->route('events.show', $event)
-            ->with('status', 'Event successfully updated!');
+            ->with('status', 'Event bijgewerkt!');
     }
 
-    /**
-     * Delete event (admin-owner via policy delete).
-     * Deletes associated images + tickets/favorites rows if present.
-     */
     public function destroy(Event $event)
     {
         $this->authorize('delete', $event);
 
-        foreach ($event->images ?? [] as $imagePath) {
-            Storage::disk('public')->delete($imagePath);
+        foreach ($event->images ?? [] as $img) {
+            Storage::disk('public')->delete($img);
         }
 
-        // Only delete tickets if table + column exist
-        if (Schema::hasTable('tickets') && Schema::hasColumn('tickets', 'event_id')) {
-            DB::table('tickets')->where('event_id', $event->id)->delete();
-        }
-
-        if (Schema::hasTable('favorites')) {
-            DB::table('favorites')->where('event_id', $event->id)->delete();
-        }
+        DB::table('tickets')->where('event_id', $event->id)->delete();
+        DB::table('favorites')->where('event_id', $event->id)->delete();
 
         $event->delete();
 
         return redirect()
             ->route('events.index')
-            ->with('status', 'Event successfully deleted!');
+            ->with('status', 'Event verwijderd!');
     }
 
-    /**
-     * Toggle favorite (AJAX).
-     * Only authenticated users.
-     */
     public function toggleFavorite(Event $event)
     {
-        if (!Auth::check()) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
-
-        if (!Schema::hasTable('favorites')) {
-            return response()->json(['message' => 'Favorites table missing'], 500);
-        }
-
         $userId = Auth::id();
 
         $exists = DB::table('favorites')
@@ -245,10 +184,7 @@ class EventsController extends Controller
                 ->where('event_id', $event->id)
                 ->delete();
 
-            return response()->json([
-                'favorited' => false,
-                'event_id' => $event->id,
-            ], 200);
+            return response()->json(['favorited' => false]);
         }
 
         DB::table('favorites')->insert([
@@ -258,9 +194,6 @@ class EventsController extends Controller
             'updated_at' => now(),
         ]);
 
-        return response()->json([
-            'favorited' => true,
-            'event_id' => $event->id,
-        ], 200);
+        return response()->json(['favorited' => true]);
     }
 }

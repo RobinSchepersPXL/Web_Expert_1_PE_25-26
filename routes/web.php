@@ -5,14 +5,15 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Http\Controllers\Auth\PasswordResetRequestController;
 use App\Http\Controllers\Auth\PasswordUpdateController;
-use App\Http\Controllers\EventsController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\RegisterController;
-use App\Http\Controllers\TicketReservationController;
+
+use App\Http\Controllers\EventsController;
 use App\Http\Controllers\TicketsController;
+use App\Http\Controllers\TicketReservationController;
+use App\Http\Controllers\ProfileController;
 
 use App\Http\Middleware\EnsureAuthenticated;
-use App\Http\Middleware\EnsureAdmin;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,16 +39,20 @@ Route::get('/home', function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware('guest')->group(function () {
-    Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register.show');
-    Route::post('/register', [RegisterController::class, 'register'])->name('register');
+    Route::get('/register', [RegisterController::class, 'showRegistrationForm'])
+        ->name('register.show');
+    Route::post('/register', [RegisterController::class, 'register'])
+        ->name('register');
 
-    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login.show');
-    Route::post('/login', [LoginController::class, 'login'])->name('login');
+    Route::get('/login', [LoginController::class, 'showLoginForm'])
+        ->name('login.show');
+    Route::post('/login', [LoginController::class, 'login'])
+        ->name('login');
 });
 
 /*
 |--------------------------------------------------------------------------
-| Authenticated routes
+| Authenticated (dashboard + logout)
 |--------------------------------------------------------------------------
 */
 Route::middleware(EnsureAuthenticated::class)->group(function () {
@@ -55,78 +60,86 @@ Route::middleware(EnsureAuthenticated::class)->group(function () {
         return view('dashboard');
     })->name('dashboard');
 
-    Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+    Route::post('/logout', [LoginController::class, 'logout'])
+        ->name('logout');
 });
 
 /*
 |--------------------------------------------------------------------------
-| Admin test routes (optioneel)
+| Password reset (Laravel standaard)
 |--------------------------------------------------------------------------
 */
-Route::get('/admin', function () {
-})->middleware(['auth.custom', 'admin']);
-
-Route::get('/admin-direct', function () {
-})->middleware(EnsureAdmin::class);
-
-/*
-|--------------------------------------------------------------------------
-| Password reset
-|--------------------------------------------------------------------------
-*/
-Route::get('password/reset', [PasswordResetRequestController::class, 'showLinkRequestForm'])
+Route::get('/password/reset', [PasswordResetRequestController::class, 'showLinkRequestForm'])
     ->name('password.request');
 
-Route::post('password/email', [PasswordResetRequestController::class, 'store'])
+Route::post('/password/email', [PasswordResetRequestController::class, 'store'])
     ->name('password.email');
 
-Route::get('password/reset/{token}', [PasswordUpdateController::class, 'showResetForm'])
+Route::get('/password/reset/{token}', [PasswordUpdateController::class, 'showResetForm'])
     ->name('password.reset');
 
-Route::post('password/reset', [PasswordUpdateController::class, 'update'])
+Route::post('/password/reset', [PasswordUpdateController::class, 'update'])
     ->name('password.update');
 
 /*
 |--------------------------------------------------------------------------
-| Events – public (index)
+| Events – PUBLIC (index)
 |--------------------------------------------------------------------------
 */
-Route::get('/events', [EventsController::class, 'index'])->name('events.index');
+Route::get('/events', [EventsController::class, 'index'])
+    ->name('events.index');
 
 /*
 |--------------------------------------------------------------------------
-| Events + Favorites + Tickets – authenticated
+| Auth-only routes
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
-    // Event CRUD (admin via policy)
-    Route::get('/events/create', [EventsController::class, 'create'])->name('events.create');
-    Route::post('/events', [EventsController::class, 'store'])->name('events.store');
 
-    Route::get('/events/{event}/edit', [EventsController::class, 'edit'])->name('events.edit');
-    Route::put('/events/{event}', [EventsController::class, 'update'])->name('events.update');
-    Route::delete('/events/{event}', [EventsController::class, 'destroy'])->name('events.destroy');
+    // Events CRUD (admin via policy)
+    Route::get('/events/create', [EventsController::class, 'create'])
+        ->name('events.create');
+    Route::post('/events', [EventsController::class, 'store'])
+        ->name('events.store');
+
+    Route::get('/events/{event}/edit', [EventsController::class, 'edit'])
+        ->name('events.edit');
+    Route::put('/events/{event}', [EventsController::class, 'update'])
+        ->name('events.update');
+    Route::delete('/events/{event}', [EventsController::class, 'destroy'])
+        ->name('events.destroy');
 
     // Favorite toggle
     Route::post('/events/{event}/favorite', [EventsController::class, 'toggleFavorite'])
         ->name('events.favorite.toggle');
 
-    // Tickets CRUD (Stap 17) – admin/owner enforced in controller via EventPolicy
-    Route::get('/events/{event}/tickets/create', [TicketsController::class, 'create'])->name('tickets.create');
-    Route::post('/events/{event}/tickets', [TicketsController::class, 'store'])->name('tickets.store');
+    // Tickets CRUD (admin-owner via policy in TicketsController)
+    Route::get('/events/{event}/tickets/create', [TicketsController::class, 'create'])
+        ->name('tickets.create');
+    Route::post('/events/{event}/tickets', [TicketsController::class, 'store'])
+        ->name('tickets.store');
 
-    Route::get('/tickets/{ticket}/edit', [TicketsController::class, 'edit'])->name('tickets.edit');
-    Route::put('/tickets/{ticket}', [TicketsController::class, 'update'])->name('tickets.update');
-    Route::delete('/tickets/{ticket}', [TicketsController::class, 'destroy'])->name('tickets.destroy');
+    Route::get('/tickets/{ticket}/edit', [TicketsController::class, 'edit'])
+        ->name('tickets.edit');
+    Route::put('/tickets/{ticket}', [TicketsController::class, 'update'])
+        ->name('tickets.update');
+    Route::delete('/tickets/{ticket}', [TicketsController::class, 'destroy'])
+        ->name('tickets.destroy');
 
-    // Ticket reservatie (Stap 18)
+    // Ticket reservatie
     Route::post('/tickets/{ticket}/reserve', [TicketReservationController::class, 'store'])
         ->name('tickets.reserve');
+
+    // Profile
+    Route::get('/profile', [ProfileController::class, 'show'])
+        ->name('profile.show');
+    Route::put('/profile', [ProfileController::class, 'update'])
+        ->name('profile.update');
 });
 
 /*
 |--------------------------------------------------------------------------
-| Events – show (MOET NA /events/create)
+| Events – SHOW (must be after /events/create)
 |--------------------------------------------------------------------------
 */
 Route::get('/events/{event}', [EventsController::class, 'show'])
@@ -135,7 +148,7 @@ Route::get('/events/{event}', [EventsController::class, 'show'])
 
 /*
 |--------------------------------------------------------------------------
-| Test session (debug)
+| Debug (optional)
 |--------------------------------------------------------------------------
 */
 Route::get('/test-session', function () {

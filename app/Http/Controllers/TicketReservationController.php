@@ -8,49 +8,62 @@ use Illuminate\Support\Facades\DB;
 
 class TicketReservationController extends Controller
 {
-    public function store(Request $request, int $ticketId)
+    /**
+     * Reservatie opslaan:
+     * - check beschikbaarheid (beschikbare_aantal - gereserveerd_aantal)
+     * - verhoog gereserveerd_aantal
+     * - insert in ticket_reservations (user_id, ticket_id, aantal)
+     */
+    public function store(Request $request, int $ticket)
     {
         if (!Auth::check()) {
-            return redirect()->back()->withErrors('Je moet ingelogd zijn om tickets te reserveren.');
+            return redirect()->back()->withErrors('Je moet ingelogd zijn om te reserveren.');
         }
 
-        $request->validate([
+        $validated = $request->validate([
             'aantal' => ['required', 'integer', 'min:1'],
         ]);
 
-        $ticket = DB::table('tickets')->where('id', $ticketId)->first();
+        try {
+            DB::transaction(function () use ($ticket, $validated) {
 
-        if (!$ticket) {
-            return redirect()->back()->withErrors('Ticket niet gevonden.');
-        }
+                // Lock ticket row om overselling te vermijden (basis correctness)
+                $t = DB::table('tickets')
+                    ->where('id', $ticket)
+                    ->lockForUpdate()
+                    ->first();
 
-        // Beschikbaarheid berekenen
-        $beschikbaar = $ticket->beschikbare_aantal - $ticket->gereserveerd_aantal;
+                if (!$t) {
+                    throw new \RuntimeException('Ticket niet gevonden.');
+                }
 
-        if ($beschikbaar < $request->aantal) {
-            return redirect()->back()->withErrors('Niet genoeg tickets beschikbaar.');
-        }
+                $beschikbaar = (int)$t->beschikbare_aantal - (int)$t->gereserveerd_aantal;
 
-        DB::transaction(function () use ($ticket, $request) {
+                if ($beschikbaar < (int)$validated['aantal']) {
+                    throw new \RuntimeException('Niet genoeg tickets beschikbaar.');
+                }
 
-            // gereserveerd_aantal verhogen
-            DB::table('tickets')
-                ->where('id', $ticket->id)
-                ->update([
-                    'gereserveerd_aantal' => $ticket->gereserveerd_aantal + $request->aantal,
+                // Update gereserveerd
+                DB::table('tickets')
+                    ->where('id', $ticket)
+                    ->update([
+                        'gereserveerd_aantal' => (int)$t->gereserveerd_aantal + (int)$validated['aantal'],
+                        'updated_at' => now(),
+                    ]);
+
+                // Insert reservatie
+                DB::table('ticket_reservations')->insert([
+                    'user_id' => Auth::id(),
+                    'ticket_id' => $ticket,
+                    'aantal' => (int)$validated['aantal'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
+            });
+        } catch (\RuntimeException $e) {
+            return redirect()->back()->withErrors($e->getMessage());
+        }
 
-            // reservatie opslaan
-            DB::table('ticket_reservations')->insert([
-                'user_id' => Auth::id(),
-                'ticket_id' => $ticket->id,
-                'aantal' => $request->aantal,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        });
-
-
-        return redirect()->back()->with('status', 'Tickets succesvol gereserveerd!');
+        return redirect()->back()->with('status', 'Reservatie succesvol!');
     }
 }

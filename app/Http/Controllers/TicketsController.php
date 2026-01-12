@@ -5,36 +5,27 @@ namespace App\Http\Controllers;
 use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class TicketsController extends Controller
 {
-    private function cols(): array
-    {
-        // Bepaal kolomnamen op basis van bestaande schema
-        $priceCol = Schema::hasColumn('tickets', 'prijs') ? 'prijs' : (Schema::hasColumn('tickets', 'price') ? 'price' : null);
-        $availableCol = Schema::hasColumn('tickets', 'beschikbare_aantal') ? 'beschikbare_aantal' : (Schema::hasColumn('tickets', 'available') ? 'available' : null);
-        $reservedCol = Schema::hasColumn('tickets', 'gereserveerd_aantal') ? 'gereserveerd_aantal' : (Schema::hasColumn('tickets', 'reserved') ? 'reserved' : null);
-        $categoryCol = Schema::hasColumn('tickets', 'categorie') ? 'categorie' : (Schema::hasColumn('tickets', 'category') ? 'category' : null);
-
-        return [$priceCol, $availableCol, $reservedCol, $categoryCol];
-    }
-
+    /**
+     * Form: ticket toevoegen voor event
+     * Alleen admin/owner (via EventPolicy update)
+     */
     public function create(Event $event)
     {
         $this->authorize('update', $event);
+
         return view('tickets.create', compact('event'));
     }
 
+    /**
+     * Ticket opslaan
+     * Kolommen: event_id, prijs, beschikbare_aantal, gereserveerd_aantal, categorie
+     */
     public function store(Request $request, Event $event)
     {
         $this->authorize('update', $event);
-
-        [$priceCol, $availableCol, $reservedCol, $categoryCol] = $this->cols();
-
-        if (!$priceCol || !$availableCol || !$reservedCol) {
-            return redirect()->back()->withErrors('Tickets tabel mist vereiste kolommen (prijs/available/reserved).');
-        }
 
         $validated = $request->validate([
             'prijs' => ['required', 'numeric', 'min:0'],
@@ -42,22 +33,88 @@ class TicketsController extends Controller
             'categorie' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $data = [
+        DB::table('tickets')->insert([
             'event_id' => $event->id,
-            $priceCol => $validated['prijs'],
-            $availableCol => $validated['beschikbare_aantal'],
-            $reservedCol => 0,
+            'prijs' => $validated['prijs'],
+            'beschikbare_aantal' => $validated['beschikbare_aantal'],
+            'gereserveerd_aantal' => 0,
+            'categorie' => $validated['categorie'] ?? null,
             'created_at' => now(),
             'updated_at' => now(),
-        ];
+        ]);
 
-        if ($categoryCol) {
-            $data[$categoryCol] = $validated['categorie'] ?? null;
+        return redirect()
+            ->route('events.show', $event)
+            ->with('status', 'Ticket succesvol aangemaakt!');
+    }
+
+    /**
+     * Form: ticket bewerken
+     * Alleen admin/owner van het event van dit ticket
+     */
+    public function edit(int $ticket)
+    {
+        $ticketRow = DB::table('tickets')->where('id', $ticket)->first();
+        abort_if(!$ticketRow, 404);
+
+        $event = Event::findOrFail($ticketRow->event_id);
+        $this->authorize('update', $event);
+
+        return view('tickets.edit', ['ticket' => $ticketRow, 'event' => $event]);
+    }
+
+    /**
+     * Ticket bijwerken
+     * Basisregel: beschikbare_aantal mag niet lager dan gereserveerd_aantal
+     */
+    public function update(Request $request, int $ticket)
+    {
+        $ticketRow = DB::table('tickets')->where('id', $ticket)->first();
+        abort_if(!$ticketRow, 404);
+
+        $event = Event::findOrFail($ticketRow->event_id);
+        $this->authorize('update', $event);
+
+        $validated = $request->validate([
+            'prijs' => ['required', 'numeric', 'min:0'],
+            'beschikbare_aantal' => ['required', 'integer', 'min:1'],
+            'categorie' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if ((int)$validated['beschikbare_aantal'] < (int)$ticketRow->gereserveerd_aantal) {
+            return redirect()->back()->withErrors('Beschikbaar aantal kan niet lager zijn dan het gereserveerde aantal.');
         }
 
-        DB::table('tickets')->insert($data);
+        DB::table('tickets')
+            ->where('id', $ticket)
+            ->update([
+                'prijs' => $validated['prijs'],
+                'beschikbare_aantal' => $validated['beschikbare_aantal'],
+                'categorie' => $validated['categorie'] ?? null,
+                'updated_at' => now(),
+            ]);
 
-        return redirect()->route('events.show', $event)
-            ->with('status', 'Ticket succesvol aangemaakt!');
+        return redirect()
+            ->route('events.show', $event)
+            ->with('status', 'Ticket succesvol bijgewerkt!');
+    }
+
+    /**
+     * Ticket verwijderen
+     * Alleen admin/owner van het event van dit ticket
+     */
+    public function destroy(int $ticket)
+    {
+        $ticketRow = DB::table('tickets')->where('id', $ticket)->first();
+        abort_if(!$ticketRow, 404);
+
+        $event = Event::findOrFail($ticketRow->event_id);
+        $this->authorize('update', $event);
+
+        DB::table('tickets')->where('id', $ticket)->delete();
+
+        return redirect()
+            ->route('events.show', $event)
+            ->with('status', 'Ticket succesvol verwijderd!');
     }
 }

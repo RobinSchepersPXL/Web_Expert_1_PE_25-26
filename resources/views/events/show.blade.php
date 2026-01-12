@@ -65,6 +65,16 @@
                 </div>
             @endif
 
+            @if($errors->any())
+                <div class="bg-red-100 text-red-800 p-3 rounded mb-4">
+                    <ul class="list-disc list-inside">
+                        @foreach($errors->all() as $e)
+                            <li>{{ $e }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             @auth
                 <div id="favoriteError" class="hidden bg-red-100 text-red-800 p-3 rounded mb-4"></div>
             @endauth
@@ -82,20 +92,21 @@
             {{-- BESCHRIJVING --}}
             <div class="bg-white p-6 rounded shadow mb-6">
                 <h2 class="text-xl font-bold mb-2">Beschrijving</h2>
-                <p>{{ $event->description }}</p>
+                <p class="text-gray-700 whitespace-pre-line">{{ $event->description }}</p>
             </div>
 
             {{-- TICKETS --}}
             <div class="bg-white p-6 rounded shadow">
-                <h2 class="text-xl font-bold mb-4">Tickets</h2>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold">Tickets</h2>
 
-                {{-- ADMIN: TICKET TOEVOEGEN --}}
-                @can('update', $event)
-                    <a href="{{ route('tickets.create', $event) }}"
-                       class="inline-block mb-4 bg-blue-600 text-white px-4 py-2 rounded">
-                        + Ticket toevoegen
-                    </a>
-                @endcan
+                    @can('update', $event)
+                        <a href="{{ route('tickets.create', $event) }}"
+                           class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                            + Ticket toevoegen
+                        </a>
+                    @endcan
+                </div>
 
                 @if($tickets->count())
                     <table class="w-full text-sm mb-4">
@@ -117,25 +128,28 @@
                                 <td class="py-2">€ {{ number_format($ticket->prijs, 2, ',', '.') }}</td>
                                 <td class="py-2">{{ $beschikbaar }}</td>
                                 <td class="py-2 flex gap-2 items-center">
+
+                                    {{-- Reservatie --}}
                                     @auth
-                                        @if($beschikbaar > 0)
-                                            <form method="POST" action="{{ route('tickets.reserve', $ticket->id) }}">
-                                                @csrf
-                                                <input type="number" name="aantal"
-                                                       min="1" max="{{ $beschikbaar }}" value="1"
-                                                       class="w-16 border rounded px-2 py-1">
-                                                <button class="bg-blue-600 text-white px-3 py-1 rounded">
-                                                    Reserveer
-                                                </button>
-                                            </form>
-                                        @else
+                                        <form method="POST" action="{{ route('tickets.reserve', $ticket->id) }}">
+                                            @csrf
+                                            <input type="number" name="aantal"
+                                                   min="1" max="{{ max($beschikbaar, 0) }}" value="1"
+                                                   class="w-16 border rounded px-2 py-1"
+                                                {{ $beschikbaar <= 0 ? 'disabled' : '' }}>
+                                            <button class="bg-blue-600 text-white px-3 py-1 rounded"
+                                                {{ $beschikbaar <= 0 ? 'disabled' : '' }}>
+                                                Reserveer
+                                            </button>
+                                        </form>
+                                        @if($beschikbaar <= 0)
                                             <span class="text-gray-500">Uitverkocht</span>
                                         @endif
                                     @else
                                         <span class="text-gray-500">Log in om te reserveren</span>
                                     @endauth
 
-                                    {{-- ADMIN: BEWERK / VERWIJDER TICKET --}}
+                                    {{-- Admin ticket actions --}}
                                     @can('update', $event)
                                         <a href="{{ route('tickets.edit', $ticket->id) }}"
                                            class="text-sm underline">
@@ -151,6 +165,7 @@
                                             </button>
                                         </form>
                                     @endcan
+
                                 </td>
                             </tr>
                         @endforeach
@@ -207,3 +222,4 @@
         </script>
     @endauth
 @endsection
+
