@@ -1,11 +1,12 @@
 <?php
 
+use App\Http\Controllers\Auth\PasswordResetRequestController;
+use App\Http\Controllers\Auth\PasswordUpdateController;
+use App\Http\Controllers\EventsController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Middleware\EnsureAuthenticated;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Auth\PasswordResetRequestController;
-use App\Http\Controllers\Auth\PasswordUpdateController;
 
 
 Route::get('/', function () {
@@ -48,3 +49,29 @@ Route::post('password/email', [PasswordResetRequestController::class, 'store'])-
 // Password reset form (clicked link) and update (submit new password)
 Route::get('password/reset/{token}', [PasswordUpdateController::class, 'showResetForm'])->name('password.reset');
 Route::post('password/reset', [PasswordUpdateController::class, 'update'])->name('password.update');
+
+
+// Zorg dat gebruikers ingelogd zijn; de controller authorizeert admin via policy
+Route::middleware(['auth'])->group(function () {
+    Route::get('/events/create', [EventsController::class, 'create'])->name('events.create');
+    Route::post('/events', [EventsController::class, 'store'])->name('events.store');
+});
+
+// Public event listing and detail routes (accessible to guests)
+Route::get('/events', [EventsController::class, 'index'])->name('events.index');
+Route::get('/events/{event}', [EventsController::class, 'show'])->name('events.show');
+
+Route::get('/test-session', function () {
+    // Sla iets op in session
+    session(['test_key' => 'test_value']);
+
+    // Haal het op
+    $value = session('test_key');
+
+    return response()->json([
+        'stored' => 'test_value',
+        'retrieved' => $value,
+        'auth_check' => Auth::check(),
+        'user_id' => Auth::id(),
+    ]);
+});

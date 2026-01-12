@@ -1,5 +1,4 @@
 <?php
-# language: php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -12,11 +11,13 @@ class CreateEventsTable extends Migration
         Schema::create('events', function (Blueprint $table) {
             $table->id();
             $table->string('title');
-            $table->text('description')->nullable();
-            $table->string('location')->nullable();
-            $table->dateTime('starts_at')->nullable();
-            $table->dateTime('ticket_sale_start_at')->nullable();
-            $table->boolean('is_favorite')->default(false);
+            $table->text('description');
+            $table->string('location');
+            $table->dateTime('start_date');
+            $table->dateTime('end_date')->nullable();
+            $table->integer('capacity')->nullable();
+            $table->decimal('price', 8, 2)->nullable();
+            $table->json('images')->nullable();
             $table->timestamps();
         });
     }

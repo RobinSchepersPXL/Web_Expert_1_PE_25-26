@@ -1,45 +1,37 @@
 <?php
-# language: php
 
 namespace App\Models;
 
-use App\Models\User;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Model;
 
 class Event extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'title',
         'description',
         'location',
-        'starts_at',
-        'ticket_sale_start_at',
-        'is_favorite',
+        'start_date',
+        'end_date',
+        'capacity',
+        'price',
+        'images', // JSON column
     ];
 
     protected $casts = [
-        'starts_at' => 'datetime',
-        'ticket_sale_start_at' => 'datetime',
-        'is_favorite' => 'boolean',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
+        'images' => 'array', // Automatically cast JSON to array
     ];
 
-    public function images(): HasMany
+    /**
+     * Relationship: Event belongs to a User (creator/owner)
+     */
+    public function user()
     {
-        return $this->hasMany(EventImage::class)->orderBy('order');
-    }
-
-    public function tickets(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(Ticket::class)->orderBy('categorie');
-    }
-
-    public function favoritedBy(): BelongsToMany
-    {
-        return $this->belongsToMany(User::class, 'event_user')->withTimestamps();
+        return $this->belongsTo(User::class);
     }
 }
