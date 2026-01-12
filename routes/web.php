@@ -1,24 +1,41 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+
 use App\Http\Controllers\Auth\PasswordResetRequestController;
 use App\Http\Controllers\Auth\PasswordUpdateController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\RegisterController;
+use App\Http\Controllers\TicketReservationController;
+
 use App\Http\Middleware\EnsureAuthenticated;
-use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\EnsureAdmin;
 
-
+/*
+|--------------------------------------------------------------------------
+| Redirect root
+|--------------------------------------------------------------------------
+*/
 Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-// home
+/*
+|--------------------------------------------------------------------------
+| Home
+|--------------------------------------------------------------------------
+*/
 Route::get('/home', function () {
     return view('home');
 })->name('home');
 
-// guest routes
+/*
+|--------------------------------------------------------------------------
+| Guest routes
+|--------------------------------------------------------------------------
+*/
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register.show');
     Route::post('/register', [RegisterController::class, 'register'])->name('register');
@@ -27,6 +44,11 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [LoginController::class, 'login'])->name('login');
 });
 
+/*
+|--------------------------------------------------------------------------
+| Authenticated routes
+|--------------------------------------------------------------------------
+*/
 Route::middleware(EnsureAuthenticated::class)->group(function () {
     Route::get('/dashboard', function () {
         return view('dashboard');
@@ -34,53 +56,82 @@ Route::middleware(EnsureAuthenticated::class)->group(function () {
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Admin test routes (optioneel)
+|--------------------------------------------------------------------------
+*/
 Route::get('/admin', function () {
 })->middleware(['auth.custom', 'admin']);
 
-
 Route::get('/admin-direct', function () {
-})->middleware(\App\Http\Middleware\EnsureAdmin::class);
+})->middleware(EnsureAdmin::class);
 
+/*
+|--------------------------------------------------------------------------
+| Password reset
+|--------------------------------------------------------------------------
+*/
+Route::get('password/reset', [PasswordResetRequestController::class, 'showLinkRequestForm'])
+    ->name('password.request');
 
-// Password reset request (show form) and submit (send email)
-Route::get('password/reset', [PasswordResetRequestController::class, 'showLinkRequestForm'])->name('password.request');
-Route::post('password/email', [PasswordResetRequestController::class, 'store'])->name('password.email');
+Route::post('password/email', [PasswordResetRequestController::class, 'store'])
+    ->name('password.email');
 
-// Password reset form (clicked link) and update (submit new password)
-Route::get('password/reset/{token}', [PasswordUpdateController::class, 'showResetForm'])->name('password.reset');
-Route::post('password/reset', [PasswordUpdateController::class, 'update'])->name('password.update');
+Route::get('password/reset/{token}', [PasswordUpdateController::class, 'showResetForm'])
+    ->name('password.reset');
 
+Route::post('password/reset', [PasswordUpdateController::class, 'update'])
+    ->name('password.update');
 
-// Zorg dat gebruikers ingelogd zijn; de controller authorizeert admin via policy
-Route::middleware(['auth'])->group(function () {
-    Route::get('/events/create', [EventsController::class, 'create'])->name('events.create');
-    Route::post('/events', [EventsController::class, 'store'])->name('events.store');
-});
-
-// Public event listing and detail routes (accessible to guests)
+/*
+|--------------------------------------------------------------------------
+| Events – public
+|--------------------------------------------------------------------------
+*/
 Route::get('/events', [EventsController::class, 'index'])->name('events.index');
 Route::get('/events/{event}', [EventsController::class, 'show'])->name('events.show');
 
-Route::get('/test-session', function () {
-    // Sla iets op in session
-    session(['test_key' => 'test_value']);
+/*
+|--------------------------------------------------------------------------
+| Events – authenticated (admin via policy)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
+    Route::get('/events/create', [EventsController::class, 'create'])->name('events.create');
+    Route::post('/events', [EventsController::class, 'store'])->name('events.store');
 
-    // Haal het op
-    $value = session('test_key');
+    Route::get('/events/{event}/edit', [EventsController::class, 'edit'])->name('events.edit');
+    Route::put('/events/{event}', [EventsController::class, 'update'])->name('events.update');
+    Route::delete('/events/{event}', [EventsController::class, 'destroy'])->name('events.destroy');
+
+    Route::post('/events/{event}/favorite', [EventsController::class, 'toggleFavorite'])
+        ->name('events.favorite.toggle');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Ticket reservatie
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
+    Route::post('/tickets/{ticket}/reserve', [TicketReservationController::class, 'store'])
+        ->name('tickets.reserve');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Test session (debug)
+|--------------------------------------------------------------------------
+*/
+Route::get('/test-session', function () {
+    session(['test_key' => 'test_value']);
 
     return response()->json([
         'stored' => 'test_value',
-        'retrieved' => $value,
+        'retrieved' => session('test_key'),
         'auth_check' => Auth::check(),
         'user_id' => Auth::id(),
     ]);
 });
-
-Route::middleware(['auth'])->group(function () {
-    Route::get('/events/{event}/edit', [EventsController::class, 'edit'])->name('events.edit');
-    Route::put('/events/{event}', [EventsController::class, 'update'])->name('events.update');
-    Route::delete('/events/{event}', [EventsController::class, 'destroy'])->name('events.destroy');
-});
-Route::post('/events/{event}/favorite', [EventsController::class, 'toggleFavorite'])
-    ->middleware('auth')
-    ->name('events.favorite.toggle');
