@@ -9,6 +9,7 @@ use App\Http\Controllers\EventsController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\TicketReservationController;
+use App\Http\Controllers\TicketsController;
 
 use App\Http\Middleware\EnsureAuthenticated;
 use App\Http\Middleware\EnsureAdmin;
@@ -87,18 +88,18 @@ Route::post('password/reset', [PasswordUpdateController::class, 'update'])
 
 /*
 |--------------------------------------------------------------------------
-| Events – public
+| Events – public (index)
 |--------------------------------------------------------------------------
 */
 Route::get('/events', [EventsController::class, 'index'])->name('events.index');
-Route::get('/events/{event}', [EventsController::class, 'show'])->name('events.show');
 
 /*
 |--------------------------------------------------------------------------
-| Events – authenticated (admin via policy)
+| Events + Favorites + Tickets – authenticated
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
+    // Event CRUD (admin via policy)
     Route::get('/events/create', [EventsController::class, 'create'])->name('events.create');
     Route::post('/events', [EventsController::class, 'store'])->name('events.store');
 
@@ -106,19 +107,31 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/events/{event}', [EventsController::class, 'update'])->name('events.update');
     Route::delete('/events/{event}', [EventsController::class, 'destroy'])->name('events.destroy');
 
+    // Favorite toggle
     Route::post('/events/{event}/favorite', [EventsController::class, 'toggleFavorite'])
         ->name('events.favorite.toggle');
+
+    // Tickets CRUD (Stap 17) – admin/owner enforced in controller via EventPolicy
+    Route::get('/events/{event}/tickets/create', [TicketsController::class, 'create'])->name('tickets.create');
+    Route::post('/events/{event}/tickets', [TicketsController::class, 'store'])->name('tickets.store');
+
+    Route::get('/tickets/{ticket}/edit', [TicketsController::class, 'edit'])->name('tickets.edit');
+    Route::put('/tickets/{ticket}', [TicketsController::class, 'update'])->name('tickets.update');
+    Route::delete('/tickets/{ticket}', [TicketsController::class, 'destroy'])->name('tickets.destroy');
+
+    // Ticket reservatie (Stap 18)
+    Route::post('/tickets/{ticket}/reserve', [TicketReservationController::class, 'store'])
+        ->name('tickets.reserve');
 });
 
 /*
 |--------------------------------------------------------------------------
-| Ticket reservatie
+| Events – show (MOET NA /events/create)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])->group(function () {
-    Route::post('/tickets/{ticket}/reserve', [TicketReservationController::class, 'store'])
-        ->name('tickets.reserve');
-});
+Route::get('/events/{event}', [EventsController::class, 'show'])
+    ->whereNumber('event')
+    ->name('events.show');
 
 /*
 |--------------------------------------------------------------------------
@@ -135,12 +148,3 @@ Route::get('/test-session', function () {
         'user_id' => Auth::id(),
     ]);
 });
-
-Route::middleware(['auth'])->group(function () {
-    Route::get('/events/{event}/edit', [EventsController::class, 'edit'])->name('events.edit');
-    Route::put('/events/{event}', [EventsController::class, 'update'])->name('events.update');
-    Route::delete('/events/{event}', [EventsController::class, 'destroy'])->name('events.destroy');
-});
-Route::post('/events/{event}/favorite', [EventsController::class, 'toggleFavorite'])
-    ->middleware('auth')
-    ->name('events.favorite.toggle');

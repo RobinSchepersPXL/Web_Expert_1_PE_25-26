@@ -1,11 +1,10 @@
-{{-- resources/views/events/show.blade.php --}}
 @extends('layouts.app')
 
 @section('content')
     <div class="container mx-auto px-4 py-8">
         <div class="max-w-5xl mx-auto">
 
-            {{-- Header --}}
+            {{-- HEADER --}}
             <div class="flex items-start justify-between gap-4 mb-6">
                 <div>
                     <h1 class="text-3xl font-bold">{{ $event->title }}</h1>
@@ -26,7 +25,7 @@
                     @endauth
                 </div>
 
-                {{-- Acties --}}
+                {{-- ACTIES --}}
                 <div class="flex gap-2">
                     @auth
                         <button
@@ -59,7 +58,7 @@
                 </div>
             </div>
 
-            {{-- Meldingen --}}
+            {{-- STATUS --}}
             @if(session('status'))
                 <div class="bg-green-100 text-green-800 p-3 rounded mb-4">
                     {{ session('status') }}
@@ -70,24 +69,33 @@
                 <div id="favoriteError" class="hidden bg-red-100 text-red-800 p-3 rounded mb-4"></div>
             @endauth
 
-            {{-- Afbeeldingen --}}
+            {{-- AFBEELDINGEN --}}
             @if(!empty($event->images))
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                     @foreach($event->images as $img)
-                        <img src="{{ asset('storage/'.$img) }}" class="rounded object-cover h-40 w-full">
+                        <img src="{{ asset('storage/'.$img) }}"
+                             class="rounded object-cover h-40 w-full">
                     @endforeach
                 </div>
             @endif
 
-            {{-- Beschrijving --}}
+            {{-- BESCHRIJVING --}}
             <div class="bg-white p-6 rounded shadow mb-6">
                 <h2 class="text-xl font-bold mb-2">Beschrijving</h2>
                 <p>{{ $event->description }}</p>
             </div>
 
-            {{-- Tickets --}}
+            {{-- TICKETS --}}
             <div class="bg-white p-6 rounded shadow">
                 <h2 class="text-xl font-bold mb-4">Tickets</h2>
+
+                {{-- ADMIN: TICKET TOEVOEGEN --}}
+                @can('update', $event)
+                    <a href="{{ route('tickets.create', $event) }}"
+                       class="inline-block mb-4 bg-blue-600 text-white px-4 py-2 rounded">
+                        + Ticket toevoegen
+                    </a>
+                @endcan
 
                 @if($tickets->count())
                     <table class="w-full text-sm mb-4">
@@ -96,7 +104,7 @@
                             <th class="text-left py-2">Categorie</th>
                             <th class="text-left py-2">Prijs</th>
                             <th class="text-left py-2">Beschikbaar</th>
-                            <th></th>
+                            <th class="text-left py-2">Actie</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -108,19 +116,41 @@
                                 <td class="py-2">{{ $ticket->categorie ?? 'Ticket' }}</td>
                                 <td class="py-2">€ {{ number_format($ticket->prijs, 2, ',', '.') }}</td>
                                 <td class="py-2">{{ $beschikbaar }}</td>
-                                <td class="py-2">
+                                <td class="py-2 flex gap-2 items-center">
                                     @auth
-                                        <form method="POST" action="{{ route('tickets.reserve', $ticket->id) }}">
-                                            @csrf
-                                            <input type="number" name="aantal" min="1" max="{{ $beschikbaar }}" value="1"
-                                                   class="w-16 border rounded px-2 py-1">
-                                            <button class="bg-blue-600 text-white px-3 py-1 rounded">
-                                                Reserveer
-                                            </button>
-                                        </form>
+                                        @if($beschikbaar > 0)
+                                            <form method="POST" action="{{ route('tickets.reserve', $ticket->id) }}">
+                                                @csrf
+                                                <input type="number" name="aantal"
+                                                       min="1" max="{{ $beschikbaar }}" value="1"
+                                                       class="w-16 border rounded px-2 py-1">
+                                                <button class="bg-blue-600 text-white px-3 py-1 rounded">
+                                                    Reserveer
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="text-gray-500">Uitverkocht</span>
+                                        @endif
                                     @else
                                         <span class="text-gray-500">Log in om te reserveren</span>
                                     @endauth
+
+                                    {{-- ADMIN: BEWERK / VERWIJDER TICKET --}}
+                                    @can('update', $event)
+                                        <a href="{{ route('tickets.edit', $ticket->id) }}"
+                                           class="text-sm underline">
+                                            Bewerk
+                                        </a>
+
+                                        <form method="POST" action="{{ route('tickets.destroy', $ticket->id) }}">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="text-sm text-red-600 underline"
+                                                    onclick="return confirm('Ticket verwijderen?')">
+                                                Verwijder
+                                            </button>
+                                        </form>
+                                    @endcan
                                 </td>
                             </tr>
                         @endforeach
@@ -137,7 +167,7 @@
         </div>
     </div>
 
-    {{-- FAVORITE AJAX SCRIPT (GEEN BLADE HIERBINNEN) --}}
+    {{-- FAVORITE AJAX SCRIPT --}}
     @auth
         <script>
             (function () {
@@ -149,7 +179,7 @@
 
                 const setUI = (on) => {
                     btn.textContent = on ? '★ In favorieten' : '☆ Voeg toe aan favorieten';
-                    badge?.classList.toggle('hidden', !on);
+                    if (badge) badge.classList.toggle('hidden', !on);
                 };
 
                 setUI(btn.dataset.initial === '1');
