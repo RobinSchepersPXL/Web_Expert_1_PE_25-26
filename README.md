@@ -25,43 +25,43 @@ Repository: https://github.com/RobinSchepersPXL/Web_Expert_1_PE_25-26
 
 ## Installatie (DDEV)
 
-##Clone de repository:
+### Clone de repository:
 git clone https://github.com/RobinSchepersPXL/Web_Expert_1_PE_25-26.git
 cd Web_Expert_1_PE_25-26
 
-##Start DDEV:
+### Start DDEV:
 ddev start
 
-##Installeer dependencies:
+### Installeer dependencies:
 ddev exec composer install
 ddev exec npm install
 
 
-##Maak .env aan:
+### Maak .env aan:
 cp .env.example .env
 ddev exec php artisan key:generate
 
 
-##Database importeren (Blackboard export):
+### Database importeren (Blackboard export):
 ddev import-db --file=database.sql
 
-###Migrations (indien nodig):
+### Migrations (indien nodig):
 ddev exec php artisan migrate
 
-##Storage link:
+### Storage link:
 ddev exec php artisan storage:link
 
-##Vite(indien nodig)
+### Vite(indien nodig)
 ddev exec npm run build
 
-##Cache leegmaken:
+### Cache leegmaken:
 ddev exec php artisan optimize:clear
 
-##Testaccounts / Rollen
+## Testaccounts / Rollen
 Admins worden herkend via users.role = 'admin'.
 
-##Password reset testen (lokaal)
-###Gebruik log mailer in .env:
+## Password reset testen (lokaal)
+### Gebruik log mailer in .env:
 MAIL_MAILER=log
 
 
