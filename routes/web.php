@@ -135,3 +135,12 @@ Route::get('/test-session', function () {
         'user_id' => Auth::id(),
     ]);
 });
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/events/{event}/edit', [EventsController::class, 'edit'])->name('events.edit');
+    Route::put('/events/{event}', [EventsController::class, 'update'])->name('events.update');
+    Route::delete('/events/{event}', [EventsController::class, 'destroy'])->name('events.destroy');
+});
+Route::post('/events/{event}/favorite', [EventsController::class, 'toggleFavorite'])
+    ->middleware('auth')
+    ->name('events.favorite.toggle');
