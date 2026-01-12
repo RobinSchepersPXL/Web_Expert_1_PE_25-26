@@ -1,22 +1,20 @@
 @extends('layouts.app')
 
-@section('title', 'Log in • Ticket Wave')
+@section('title', 'Inloggen • Ticket Wave')
 
 @section('content_full')
-    <div class="min-h-[calc(100vh-120px)] w-full flex items-center justify-center px-5 py-10">
-        <div class="w-full max-w-md card">
+    <div class="auth-wrap">
+        <div class="card auth-card">
             <div class="card-body">
-                <h1 class="text-2xl font-extrabold tracking-tight mb-4">Inloggen</h1>
+                <div class="text-xl mb-4">Inloggen</div>
 
                 @if(session('status'))
-                    <div class="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-emerald-100">
-                        {{ session('status') }}
-                    </div>
+                    <div class="mb-4 muted">{{ session('status') }}</div>
                 @endif
 
                 @if($errors->any())
-                    <div class="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-100">
-                        <ul class="list-disc list-inside">
+                    <div class="mb-4" style="color:#fecaca;">
+                        <ul style="margin:0; padding-left:18px;">
                             @foreach($errors->all() as $e)
                                 <li>{{ $e }}</li>
                             @endforeach
@@ -24,44 +22,39 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('login') }}" class="space-y-4">
+                <form method="POST" action="{{ route('login') }}" style="display:grid; gap:14px;">
                     @csrf
 
                     <div>
-                        <label class="block text-sm font-semibold mb-1 text-slate-200">Email</label>
+                        <label>Email</label>
                         <input type="email" name="email" value="{{ old('email') }}" required autofocus>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-semibold mb-1 text-slate-200">Wachtwoord</label>
+                        <label>Wachtwoord</label>
                         <input type="password" name="password" required>
                     </div>
 
-                    <div class="flex items-center justify-between text-sm">
-                        <label class="inline-flex items-center gap-2 text-slate-300">
-                            <input type="checkbox" name="remember" class="h-4 w-4 rounded border-white/20 bg-white/10">
+                    <div class="flex justify-between items-center" style="font-size:13px;">
+                        <label class="muted" style="display:flex; align-items:center; gap:8px; margin:0;">
+                            <input type="checkbox" name="remember" style="width:auto;">
                             Onthoud mij
                         </label>
 
-                        @if (Route::has('password.request'))
-                            <a href="{{ route('password.request') }}" class="underline text-blue-300 hover:text-blue-200">
-                                Wachtwoord vergeten?
-                            </a>
+                        @if(Route::has('password.request'))
+                            <a class="link" href="{{ route('password.request') }}">Wachtwoord vergeten?</a>
                         @endif
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-full justify-center py-2.5">
-                        Inloggen
-                    </button>
-                </form>
+                    <button class="btn btn-primary w-full" type="submit">Inloggen</button>
 
-                <div class="mt-5 text-sm text-slate-300">
-                    Nog geen account?
-                    <a href="{{ route('register.show') }}" class="underline text-blue-300 hover:text-blue-200">
-                        Registreer hier
-                    </a>
-                </div>
+                    <div class="muted" style="font-size:13px;">
+                        Nog geen account?
+                        <a class="link" href="{{ route('register.show') }}">Registreer hier</a>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 @endsection
+

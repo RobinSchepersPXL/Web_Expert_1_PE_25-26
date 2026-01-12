@@ -24,11 +24,7 @@
                 </div>
             </div>
 
-            <div class="w-full lg:w-1/2 relative mt-10 lg:mt-0">
-                {{-- Hergebruik dezelfde illustratie: maak `resources/views/components/illustration.blade.php` met je SVG --}}
-                @include('components.illustration')
-                <div class="absolute inset-0 rounded-t-lg lg:rounded-t-none lg:rounded-r-lg shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"></div>
-            </div>
+
         </main>
     </div>
 @endsection
